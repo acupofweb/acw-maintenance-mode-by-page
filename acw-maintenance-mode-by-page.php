@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Maintenance Mode by Page
+ * Plugin Name: ACW Maintenance Mode by Page
  * Description: Put your site in maintenance mode showing logged-out visitors a single page of your choice, picked from your existing pages. Logged-in users keep browsing the whole site.
  * Author: A Cup of Web
  * Author URI: https://www.acupofweb.it/
@@ -9,7 +9,7 @@
  * Requires PHP: 7.2
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: maintenance-mode-by-page
+ * Text Domain: acw-maintenance-mode-by-page
  * Domain Path: /languages
  */
 
@@ -108,10 +108,10 @@ class ACW_Maintenance_Mode {
 
 	public function add_settings_page() {
 		add_options_page(
-			__( 'Maintenance Mode', 'maintenance-mode-by-page' ),
-			__( 'Maintenance', 'maintenance-mode-by-page' ),
+			__( 'Maintenance Mode', 'acw-maintenance-mode-by-page' ),
+			__( 'Maintenance', 'acw-maintenance-mode-by-page' ),
 			'manage_options',
-			'maintenance-mode-by-page',
+			'acw-maintenance-mode-by-page',
 			array( $this, 'render_settings_page' )
 		);
 	}
@@ -151,12 +151,12 @@ class ACW_Maintenance_Mode {
 		$width   = get_option( self::OPTION_WIDTH );
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Maintenance Mode', 'maintenance-mode-by-page' ); ?></h1>
+			<h1><?php esc_html_e( 'Maintenance Mode', 'acw-maintenance-mode-by-page' ); ?></h1>
 
 			<?php if ( $this->is_active() ) : ?>
 				<div class="notice notice-warning inline">
-					<p><strong><?php esc_html_e( 'Maintenance mode is ACTIVE.', 'maintenance-mode-by-page' ); ?></strong>
-					<?php esc_html_e( 'Logged-out visitors only see the selected page.', 'maintenance-mode-by-page' ); ?></p>
+					<p><strong><?php esc_html_e( 'Maintenance mode is ACTIVE.', 'acw-maintenance-mode-by-page' ); ?></strong>
+					<?php esc_html_e( 'Logged-out visitors only see the selected page.', 'acw-maintenance-mode-by-page' ); ?></p>
 				</div>
 			<?php endif; ?>
 
@@ -164,17 +164,17 @@ class ACW_Maintenance_Mode {
 				<?php settings_fields( 'acw_mm_group' ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Enable maintenance', 'maintenance-mode-by-page' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Enable maintenance', 'acw-maintenance-mode-by-page' ); ?></th>
 						<td>
 							<label>
 								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_ENABLED ); ?>" value="1" <?php checked( $enabled, 1 ); ?> />
-								<?php esc_html_e( 'Show visitors only the selected page', 'maintenance-mode-by-page' ); ?>
+								<?php esc_html_e( 'Show visitors only the selected page', 'acw-maintenance-mode-by-page' ); ?>
 							</label>
 						</td>
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="<?php echo esc_attr( self::OPTION_PAGE_ID ); ?>"><?php esc_html_e( 'Page to display', 'maintenance-mode-by-page' ); ?></label>
+							<label for="<?php echo esc_attr( self::OPTION_PAGE_ID ); ?>"><?php esc_html_e( 'Page to display', 'acw-maintenance-mode-by-page' ); ?></label>
 						</th>
 						<td>
 							<?php
@@ -182,25 +182,25 @@ class ACW_Maintenance_Mode {
 								'name'              => esc_attr( self::OPTION_PAGE_ID ),
 								'id'                => esc_attr( self::OPTION_PAGE_ID ),
 								'selected'          => absint( $page_id ),
-								'show_option_none'  => esc_html__( '— Select a page —', 'maintenance-mode-by-page' ),
+								'show_option_none'  => esc_html__( '— Select a page —', 'acw-maintenance-mode-by-page' ),
 								'option_none_value' => 0,
 							) );
 							?>
-							<p class="description"><?php esc_html_e( 'Choose one of the pages already listed under “Pages”.', 'maintenance-mode-by-page' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Choose one of the pages already listed under “Pages”.', 'acw-maintenance-mode-by-page' ); ?></p>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Content width', 'maintenance-mode-by-page' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Content width', 'acw-maintenance-mode-by-page' ); ?></th>
 						<td>
 							<fieldset>
 								<label>
 									<input type="radio" name="<?php echo esc_attr( self::OPTION_WIDTH ); ?>" value="default" <?php checked( $width, 'default' ); ?> />
-									<?php esc_html_e( 'Default width (inherited from the theme)', 'maintenance-mode-by-page' ); ?>
+									<?php esc_html_e( 'Default width (inherited from the theme)', 'acw-maintenance-mode-by-page' ); ?>
 								</label>
 								<br />
 								<label>
 									<input type="radio" name="<?php echo esc_attr( self::OPTION_WIDTH ); ?>" value="full" <?php checked( $width, 'full' ); ?> />
-									<?php esc_html_e( 'Full width', 'maintenance-mode-by-page' ); ?>
+									<?php esc_html_e( 'Full width', 'acw-maintenance-mode-by-page' ); ?>
 								</label>
 							</fieldset>
 						</td>
@@ -221,8 +221,8 @@ class ACW_Maintenance_Mode {
 		}
 		$wp_admin_bar->add_node( array(
 			'id'    => 'acw-mm-notice',
-			'title' => __( '⚠ Maintenance active', 'maintenance-mode-by-page' ),
-			'href'  => admin_url( 'options-general.php?page=maintenance-mode-by-page' ),
+			'title' => __( '⚠ Maintenance active', 'acw-maintenance-mode-by-page' ),
+			'href'  => admin_url( 'options-general.php?page=acw-maintenance-mode-by-page' ),
 		) );
 	}
 }

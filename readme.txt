@@ -1,4 +1,4 @@
-=== Maintenance Mode by Page ===
+=== ACW Maintenance Mode by Page ===
 Contributors: lorenzof
 Tags: maintenance, maintenance mode, coming soon, under construction, 503
 Requires at least: 5.0
@@ -12,7 +12,7 @@ Put your site in maintenance mode using one of your existing pages. No templates
 
 == Description ==
 
-Maintenance Mode by Page lets you put your site into maintenance by showing visitors **one single page**, chosen from your existing Pages. No dedicated templates and no page builder are required: you design the page with your own theme, then simply select it.
+ACW Maintenance Mode by Page lets you put your site into maintenance by showing visitors **one single page**, chosen from your existing Pages. No dedicated templates and no page builder are required: you design the page with your own theme, then simply select it.
 
 When the mode is active:
 
@@ -26,7 +26,7 @@ No complex configuration required: one checkbox to enable it and one dropdown to
 
 == Installation ==
 
-1. Upload the `maintenance-mode-by-page` folder to `/wp-content/plugins/`, or install the plugin from the WordPress dashboard.
+1. Upload the `acw-maintenance-mode-by-page` folder to `/wp-content/plugins/`, or install the plugin from the WordPress dashboard.
 2. Activate the plugin through the "Plugins" screen.
 3. Go to **Settings → Maintenance**.
 4. Check "Enable maintenance", choose the page to display and save.

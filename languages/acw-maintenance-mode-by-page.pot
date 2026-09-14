@@ -1,9 +1,9 @@
 # Copyright (C) 2026 A Cup of Web
-# This file is distributed under the same license as the Maintenance Mode by Page plugin.
+# This file is distributed under the same license as the ACW Maintenance Mode by Page plugin.
 msgid ""
 msgstr ""
-"Project-Id-Version: Maintenance Mode by Page 1.0.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/maintenance-mode-by-page\n"
+"Project-Id-Version: ACW Maintenance Mode by Page 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/acw-maintenance-mode-by-page\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -12,10 +12,10 @@ msgstr ""
 "POT-Creation-Date: 2026-09-09T00:00:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: manual\n"
-"X-Domain: maintenance-mode-by-page\n"
+"X-Domain: acw-maintenance-mode-by-page\n"
 
 #. Plugin Name of the plugin
-msgid "Maintenance Mode by Page"
+msgid "ACW Maintenance Mode by Page"
 msgstr ""
 
 #. Description of the plugin
@@ -26,54 +26,54 @@ msgstr ""
 msgid "A Cup of Web"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Maintenance Mode"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Maintenance"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Maintenance mode is ACTIVE."
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Logged-out visitors only see the selected page."
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Enable maintenance"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Show visitors only the selected page"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Page to display"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "— Select a page —"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Choose one of the pages already listed under “Pages”."
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Content width"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Default width (inherited from the theme)"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "Full width"
 msgstr ""
 
-#: maintenance-mode-by-page.php
+#: acw-maintenance-mode-by-page.php
 msgid "⚠ Maintenance active"
 msgstr ""

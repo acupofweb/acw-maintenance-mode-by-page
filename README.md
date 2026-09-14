@@ -1,4 +1,4 @@
-# Maintenance Mode by Page
+# ACW Maintenance Mode by Page
 
 A WordPress plugin that puts your site into maintenance mode by showing logged-out
 visitors a single page of your choice, picked from your existing pages. Logged-in
@@ -23,7 +23,7 @@ own theme, then simply select it.
 
 ## Installation
 
-1. Copy the `maintenance-mode-by-page` folder to `wp-content/plugins/`.
+1. Copy the `acw-maintenance-mode-by-page` folder to `wp-content/plugins/`.
 2. Activate the plugin from the **Plugins** screen.
 3. Go to **Settings → Maintenance**.
 4. Enable maintenance, choose the page to display, pick the content width and save.
