@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class ACW_Maintenance_Mode {
 
+	const VERSION        = '1.0.0';
 	const OPTION_ENABLED = 'acw_mm_enabled';
 	const OPTION_PAGE_ID = 'acw_mm_page_id';
 	const OPTION_WIDTH   = 'acw_mm_width';
@@ -28,6 +29,7 @@ class ACW_Maintenance_Mode {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_redirect' ) );
 		add_filter( 'template_include', array( $this, 'maybe_use_blank_template' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ) );
 		add_action( 'admin_bar_menu', array( $this, 'admin_bar_notice' ), 100 );
 	}
 
@@ -87,6 +89,56 @@ class ACW_Maintenance_Mode {
 			return plugin_dir_path( __FILE__ ) . 'template-maintenance.php';
 		}
 		return $template;
+	}
+
+	/**
+	 * Enqueue the maintenance page styles (only on the maintenance page, for
+	 * logged-out visitors). The rules are added inline so the container width
+	 * can follow the selected option and the theme.
+	 */
+	public function enqueue_styles() {
+		if ( ! $this->is_active() || is_user_logged_in() ) {
+			return;
+		}
+		if ( ! is_page( (int) get_option( self::OPTION_PAGE_ID ) ) ) {
+			return;
+		}
+
+		wp_register_style( 'acw-mm', false, array(), self::VERSION );
+		wp_enqueue_style( 'acw-mm' );
+
+		$width   = $this->get_container_width();
+		$padding = 'none' === $width ? '0' : '8vh 24px';
+		$css     = '.acw-mm-wrap{max-width:' . $width . ';margin:0 auto;padding:' . $padding . ';}';
+		wp_add_inline_style( 'acw-mm', $css );
+	}
+
+	/**
+	 * Container width for the maintenance page.
+	 * "full" spans the whole viewport; otherwise inherit from the theme
+	 * (theme.json contentSize, then $content_width), with a fallback.
+	 */
+	private function get_container_width() {
+		if ( 'full' === get_option( self::OPTION_WIDTH ) ) {
+			return 'none';
+		}
+
+		$width = '';
+		if ( function_exists( 'wp_get_global_settings' ) ) {
+			$layout = wp_get_global_settings( array( 'layout' ) );
+			if ( ! empty( $layout['contentSize'] ) ) {
+				// Keep only characters valid in a CSS length (e.g. "720px", "40rem", "100%").
+				$width = preg_replace( '/[^0-9a-z%.\-]/i', '', $layout['contentSize'] );
+			}
+		}
+		if ( '' === $width && ! empty( $GLOBALS['content_width'] ) ) {
+			$width = (int) $GLOBALS['content_width'] . 'px';
+		}
+		if ( '' === $width ) {
+			$width = '720px';
+		}
+
+		return $width;
 	}
 
 	/**
