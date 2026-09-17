@@ -5,7 +5,7 @@
  * The container styles are enqueued from the main plugin file and printed by
  * wp_head() below.
  *
- * @package ACW_Maintenance_Mode
+ * @package ACWMMBP_Maintenance_Mode
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

@@ -7,6 +7,6 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-delete_option( 'acw_mm_enabled' );
-delete_option( 'acw_mm_page_id' );
-delete_option( 'acw_mm_width' );
+delete_option( 'acwmmbp_enabled' );
+delete_option( 'acwmmbp_page_id' );
+delete_option( 'acwmmbp_width' );

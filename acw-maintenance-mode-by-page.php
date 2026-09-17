@@ -17,12 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class ACW_Maintenance_Mode {
+class ACWMMBP_Maintenance_Mode {
 
 	const VERSION        = '1.0.0';
-	const OPTION_ENABLED = 'acw_mm_enabled';
-	const OPTION_PAGE_ID = 'acw_mm_page_id';
-	const OPTION_WIDTH   = 'acw_mm_width';
+	const OPTION_ENABLED = 'acwmmbp_enabled';
+	const OPTION_PAGE_ID = 'acwmmbp_page_id';
+	const OPTION_WIDTH   = 'acwmmbp_width';
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
@@ -104,13 +104,13 @@ class ACW_Maintenance_Mode {
 			return;
 		}
 
-		wp_register_style( 'acw-mm', false, array(), self::VERSION );
-		wp_enqueue_style( 'acw-mm' );
+		wp_register_style( 'acwmmbp', false, array(), self::VERSION );
+		wp_enqueue_style( 'acwmmbp' );
 
 		$width   = $this->get_container_width();
 		$padding = 'none' === $width ? '0' : '8vh 24px';
 		$css     = '.acw-mm-wrap{max-width:' . $width . ';margin:0 auto;padding:' . $padding . ';}';
-		wp_add_inline_style( 'acw-mm', $css );
+		wp_add_inline_style( 'acwmmbp', $css );
 	}
 
 	/**
@@ -169,17 +169,17 @@ class ACW_Maintenance_Mode {
 	}
 
 	public function register_settings() {
-		register_setting( 'acw_mm_group', self::OPTION_ENABLED, array(
+		register_setting( 'acwmmbp_group', self::OPTION_ENABLED, array(
 			'type'              => 'boolean',
 			'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
 			'default'           => false,
 		) );
-		register_setting( 'acw_mm_group', self::OPTION_PAGE_ID, array(
+		register_setting( 'acwmmbp_group', self::OPTION_PAGE_ID, array(
 			'type'              => 'integer',
 			'sanitize_callback' => 'absint',
 			'default'           => 0,
 		) );
-		register_setting( 'acw_mm_group', self::OPTION_WIDTH, array(
+		register_setting( 'acwmmbp_group', self::OPTION_WIDTH, array(
 			'type'              => 'string',
 			'sanitize_callback' => array( $this, 'sanitize_width' ),
 			'default'           => 'default',
@@ -213,7 +213,7 @@ class ACW_Maintenance_Mode {
 			<?php endif; ?>
 
 			<form method="post" action="options.php">
-				<?php settings_fields( 'acw_mm_group' ); ?>
+				<?php settings_fields( 'acwmmbp_group' ); ?>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Enable maintenance', 'acw-maintenance-mode-by-page' ); ?></th>
@@ -279,4 +279,4 @@ class ACW_Maintenance_Mode {
 	}
 }
 
-new ACW_Maintenance_Mode();
+new ACWMMBP_Maintenance_Mode();
