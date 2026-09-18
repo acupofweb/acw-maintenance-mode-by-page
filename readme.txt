@@ -19,7 +19,7 @@ When the mode is active:
 * Logged-out visitors who open any URL are redirected to the selected page.
 * Logged-in users keep browsing the whole site normally.
 * The maintenance page is served with an HTTP **503 Service Unavailable** status and a `Retry-After` header, which is the correct signal for search engines during a temporary maintenance.
-* The page is displayed with a minimal template (**content only**, without the theme header, footer and menu). The container width is inherited from the theme (`theme.json` or `$content_width`), with an internal fallback.
+* The page is displayed with a minimal template (**content only**, without the theme header, footer and menu). Choose the content width: **default** (inherited from the theme via `theme.json` or `$content_width`, with a fallback) or **full width**.
 * The login page, the admin area, AJAX and the REST API remain reachable, so you can always sign in and turn the mode off.
 
 No complex configuration required: one checkbox to enable it and one dropdown to pick the page.
