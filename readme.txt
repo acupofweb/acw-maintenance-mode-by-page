@@ -51,7 +51,7 @@ The login page (`wp-login.php`) and the admin area always remain accessible. Sig
 
 == Screenshots ==
 
-1. The settings screen: enable the mode and choose the page.
+1. The settings screen: enable the mode, choose the page and pick the content width.
 
 == Changelog ==
 
