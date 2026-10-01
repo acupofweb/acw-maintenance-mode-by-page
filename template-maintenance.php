@@ -20,6 +20,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class( 'acw-mm-body' ); ?>>
+	<?php
+	if ( function_exists( 'wp_body_open' ) ) {
+		wp_body_open();
+	}
+	?>
 	<main class="acw-mm-wrap">
 		<?php
 		while ( have_posts() ) :
