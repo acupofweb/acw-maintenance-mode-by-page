@@ -4,7 +4,7 @@
  * Description: Put your site in maintenance mode showing visitors a single page of your choice, picked from your existing pages. Choose which user roles keep browsing the whole site.
  * Author: A Cup of Web
  * Author URI: https://www.acupofweb.it/
- * Version: 1.1.0
+ * Version: 1.2.0
  * Requires at least: 5.0
  * Requires PHP: 7.2
  * License: GPLv2 or later
@@ -19,27 +19,40 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class ACWMMBP_Maintenance_Mode {
 
-	const VERSION        = '1.1.0';
+	const VERSION        = '1.2.0';
 	const OPTION_ENABLED = 'acwmmbp_enabled';
 	const OPTION_PAGE_ID = 'acwmmbp_page_id';
 	const OPTION_WIDTH   = 'acwmmbp_width';
 	const OPTION_ROLES   = 'acwmmbp_roles';
 	const OPTION_ALLOWED = 'acwmmbp_allowed_pages';
+	const OPTION_SCRIPTS = 'acwmmbp_hide_scripts';
+	const OPTION_REST    = 'acwmmbp_block_rest';
 	const SETTINGS_SLUG  = 'acw-maintenance-mode-by-page';
+
+	/**
+	 * Cached data about the maintenance page, used when tracking codes are not
+	 * loaded.
+	 */
+	private $page_block_names      = null;
+	private $page_block_namespaces = null;
+	private $page_script_paths     = null;
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'maybe_block_admin' ) );
 		add_action( 'admin_notices', array( $this, 'invalid_page_notice' ) );
+		add_action( 'init', array( $this, 'maybe_block_sitemap' ), 0 );
 		add_action( 'template_redirect', array( $this, 'maybe_redirect' ) );
+		add_action( 'template_redirect', array( $this, 'maybe_hide_scripts' ), 20 );
+		add_filter( 'rest_pre_dispatch', array( $this, 'maybe_block_rest' ), 10, 3 );
 		add_filter( 'template_include', array( $this, 'maybe_use_blank_template' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ) );
 		add_action( 'admin_bar_menu', array( $this, 'admin_bar_notice' ), 100 );
 
 		// Purge page caches whenever the settings are saved. pre_update_option_*
 		// runs even when a value does not change, unlike update_option_*.
-		foreach ( array( self::OPTION_ENABLED, self::OPTION_PAGE_ID, self::OPTION_WIDTH, self::OPTION_ROLES, self::OPTION_ALLOWED ) as $option ) {
+		foreach ( array( self::OPTION_ENABLED, self::OPTION_PAGE_ID, self::OPTION_WIDTH, self::OPTION_ROLES, self::OPTION_ALLOWED, self::OPTION_SCRIPTS, self::OPTION_REST ) as $option ) {
 			add_filter( 'pre_update_option_' . $option, array( $this, 'schedule_cache_purge' ) );
 		}
 	}
@@ -169,6 +182,12 @@ class ACWMMBP_Maintenance_Mode {
 			return;
 		}
 
+		// Serve robots.txt normally: search engines then see the 503 of every
+		// page, while a 5xx robots.txt would stop the crawl of the whole site.
+		if ( is_robots() || ( function_exists( 'is_favicon' ) && is_favicon() ) ) {
+			return;
+		}
+
 		$page_id = $this->get_page_id();
 
 		// If we are already on the maintenance page, serve it with a 503 status
@@ -215,6 +234,339 @@ class ACWMMBP_Maintenance_Mode {
 		nocache_headers();
 		wp_safe_redirect( $page_id ? get_permalink( $page_id ) : home_url( '/' ), 302 );
 		exit;
+	}
+
+	/**
+	 * Answer XML sitemap requests (e.g. those of WordPress and Yoast SEO) with a
+	 * 503, so the list of the site URLs is not published during
+	 * maintenance. Runs on init because SEO plugins serve their sitemaps before
+	 * template_redirect.
+	 */
+	public function maybe_block_sitemap() {
+		if ( ! $this->is_enabled() || ! $this->is_sitemap_request() || $this->user_can_bypass() ) {
+			return;
+		}
+		$this->send_503_headers();
+		header( 'Content-Type: text/plain; charset=utf-8' );
+		echo esc_html__( 'The site is undergoing maintenance. Please come back soon.', 'acw-maintenance-mode-by-page' );
+		exit;
+	}
+
+	/**
+	 * True for an XML sitemap or its stylesheet, e.g. /sitemap_index.xml,
+	 * /page-sitemap.xml, /wp-sitemap-posts-page-1.xml or /main-sitemap.xsl.
+	 */
+	private function is_sitemap_request() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only check of the requested URL.
+		if ( isset( $_GET['sitemap'] ) || isset( $_GET['sitemap-stylesheet'] ) ) {
+			return true;
+		}
+		$uri  = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$path = (string) wp_parse_url( $uri, PHP_URL_PATH );
+		return (bool) preg_match( '#sitemap[^/]*\.(xml|xsl)(\.gz)?$#i', $path );
+	}
+
+	/**
+	 * When the option is on, answer the REST API routes that publish the site
+	 * content (wp/v2 and oEmbed) with a 503 for requests that are not
+	 * authenticated. Signed-in users and application passwords keep working;
+	 * the routes of other plugins (e.g. forms) are not affected.
+	 */
+	public function maybe_block_rest( $result, $server, $request ) {
+		if ( null !== $result || ! get_option( self::OPTION_REST ) || ! $this->is_enabled() || is_user_logged_in() ) {
+			return $result;
+		}
+
+		/**
+		 * Filters the REST API namespaces closed to unauthenticated requests.
+		 *
+		 * @param string[] $namespaces Namespaces, e.g. "wp/v2".
+		 */
+		$namespaces = (array) apply_filters( 'acwmmbp_blocked_rest_namespaces', array( 'wp/v2', 'oembed/1.0' ) );
+
+		// WordPress matches routes case-insensitively.
+		$route = strtolower( untrailingslashit( $request->get_route() ) );
+		foreach ( $namespaces as $namespace ) {
+			$namespace = '/' . strtolower( trim( $namespace, '/' ) );
+			if ( $route === $namespace || 0 === strpos( $route, $namespace . '/' ) ) {
+				$response = new WP_REST_Response(
+					array(
+						'code'    => 'acwmmbp_maintenance',
+						'message' => __( 'The site is undergoing maintenance. Please come back soon.', 'acw-maintenance-mode-by-page' ),
+						'data'    => array( 'status' => 503 ),
+					),
+					503
+				);
+				$response->header( 'Retry-After', '3600' );
+				return $response;
+			}
+		}
+		return $result;
+	}
+
+	/**
+	 * When the option is on, filter what plugins and snippets print through
+	 * wp_head(), wp_body_open() and wp_footer() on the maintenance page,
+	 * removing tracking codes and other added scripts. Styles stay.
+	 */
+	public function maybe_hide_scripts() {
+		if ( ! get_option( self::OPTION_SCRIPTS ) || ! $this->is_maintenance_request() ) {
+			return;
+		}
+		foreach ( array( 'wp_head', 'wp_body_open', 'wp_footer' ) as $hook ) {
+			add_action( $hook, array( $this, 'start_scripts_buffer' ), PHP_INT_MIN );
+			add_action( $hook, array( $this, 'end_scripts_buffer' ), PHP_INT_MAX );
+		}
+	}
+
+	public function start_scripts_buffer() {
+		ob_start();
+	}
+
+	public function end_scripts_buffer() {
+		echo $this->remove_added_scripts( (string) ob_get_clean() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup printed by WordPress hooks, only filtered here.
+	}
+
+	/**
+	 * Remove <noscript> blocks (tracking pixels, Tag Manager iframes) and the
+	 * <script> tags that do not belong to WordPress, the theme or the blocks
+	 * used in the maintenance page.
+	 */
+	private function remove_added_scripts( $html ) {
+		$html = preg_replace( '#<noscript\b[^>]*>.*?</noscript>#is', '', $html );
+		return preg_replace_callback(
+			'#<script\b([^>]*)>(.*?)</script>#is',
+			function ( $match ) {
+				$keep = $this->is_page_script( $match[1], $match[2] );
+
+				/**
+				 * Filters whether a script stays on the maintenance page when
+				 * tracking codes are not loaded.
+				 *
+				 * @param bool   $keep Whether the script is kept.
+				 * @param string $tag  The <script> tag.
+				 */
+				return apply_filters( 'acwmmbp_keep_script', $keep, $match[0] ) ? $match[0] : '';
+			},
+			$html
+		);
+	}
+
+	/**
+	 * True when a <script> tag, from its attributes and code, belongs to
+	 * WordPress, the theme or a block used in the maintenance page.
+	 */
+	private function is_page_script( $attributes, $code ) {
+		$id  = preg_match( '#(?:^|\s)id=(["\'])(.*?)\1#i', $attributes, $m ) ? html_entity_decode( $m[2] ) : '';
+		$src = preg_match( '#(?:^|\s)src=(["\'])(.*?)\1#i', $attributes, $m ) ? html_entity_decode( $m[2] ) : '';
+
+		// Script modules and import map printed by WordPress.
+		if ( 'wp-importmap' === $id || 0 === strpos( $id, 'wp-script-module-data-' ) ) {
+			return true;
+		}
+		if ( '' !== $src && '-js-module' === substr( $id, -10 ) ) {
+			return $this->is_page_script_url( $src );
+		}
+
+		// Scripts enqueued with wp_enqueue_script(): "{handle}-js", plus the
+		// inline parts "{handle}-js-extra", "-before", "-after", "-translations".
+		if ( preg_match( '#^(.+)-js(-extra|-before|-after|-translations)?$#', $id, $m ) && wp_script_is( $m[1], 'registered' ) ) {
+			return in_array( $m[1], $this->get_page_script_handles(), true );
+		}
+
+		// Scripts printed directly by a block plugin, e.g. Spectra's
+		// "uagb-script-frontend-{ID}".
+		if ( '' !== $id && $this->starts_with_block_namespace( $id ) ) {
+			return '' === $src || $this->is_page_script_url( $src );
+		}
+
+		// Inline settings printed by a block plugin without an id, e.g.
+		// "var wpforms_settings = ..." for a WPForms form.
+		if ( '' === $src ) {
+			foreach ( $this->get_page_block_namespaces() as $namespace ) {
+				if ( preg_match( '#\b' . preg_quote( $namespace, '#' ) . '[_-]#i', $code ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Handles of the registered scripts that belong to WordPress, the theme or
+	 * a block used in the maintenance page, with their dependencies.
+	 */
+	private function get_page_script_handles() {
+		$scripts = wp_scripts();
+		$handles = array();
+		foreach ( $scripts->registered as $handle => $script ) {
+			if ( ( is_string( $script->src ) && '' !== $script->src && $this->is_page_script_url( $script->src ) ) || $this->starts_with_block_namespace( $handle ) ) {
+				$handles[] = $handle;
+			}
+		}
+
+		// A script that a kept script depends on is needed too, as are the
+		// handles without a file that only group other scripts (e.g. "jquery").
+		$queue = $handles;
+		while ( $queue ) {
+			$handle = array_shift( $queue );
+			if ( empty( $scripts->registered[ $handle ] ) ) {
+				continue;
+			}
+			foreach ( $scripts->registered[ $handle ]->deps as $dep ) {
+				if ( ! in_array( $dep, $handles, true ) ) {
+					$handles[] = $dep;
+					$queue[]   = $dep;
+				}
+			}
+		}
+		return $handles;
+	}
+
+	/**
+	 * True for a script file of WordPress, of the theme, of the uploads folder
+	 * (where block plugins save the files generated for a page) or of a plugin
+	 * whose blocks are used in the maintenance page. Files of other plugins and
+	 * of other sites are not kept.
+	 */
+	private function is_page_script_url( $src ) {
+		$src = $this->normalize_url( $src );
+		if ( null === $this->page_script_paths ) {
+			$uploads = wp_get_upload_dir();
+			$paths   = array( includes_url(), get_template_directory_uri() . '/', get_stylesheet_directory_uri() . '/', trailingslashit( $uploads['baseurl'] ) );
+			foreach ( $this->get_page_block_plugins() as $slug ) {
+				$paths[] = plugins_url( $slug . '/' );
+			}
+			$this->page_script_paths = array_map( array( $this, 'normalize_url' ), $paths );
+		}
+		foreach ( $this->page_script_paths as $path ) {
+			if ( 0 === strpos( $src, $path ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Make a script URL comparable: no scheme, and site host added to paths
+	 * relative to the root (WordPress prints core scripts as /wp-includes/...).
+	 */
+	private function normalize_url( $url ) {
+		$url = preg_replace( '#^https?:#i', '', trim( $url ) );
+		if ( 0 === strpos( $url, '/' ) && 0 !== strpos( $url, '//' ) ) {
+			$url = preg_replace( '#^(https?:)?(//[^/]+).*$#i', '$2', site_url() ) . $url;
+		}
+		return $url;
+	}
+
+	/**
+	 * True when a handle or id starts with the namespace of a block used in the
+	 * maintenance page, e.g. "uagb-countdown-js" for the Spectra "uagb/" blocks.
+	 */
+	private function starts_with_block_namespace( $name ) {
+		foreach ( $this->get_page_block_namespaces() as $namespace ) {
+			if ( 0 === strpos( $name, $namespace . '-' ) || 0 === strpos( $name, $namespace . '_' ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Namespaces of the blocks used in the maintenance page (synced patterns
+	 * included), except the WordPress "core" one.
+	 */
+	private function get_page_block_namespaces() {
+		if ( null === $this->page_block_namespaces ) {
+			$namespaces = array();
+			foreach ( $this->get_page_block_names() as $name ) {
+				$namespace = strtok( $name, '/' );
+				if ( 'core' !== $namespace ) {
+					$namespaces[] = $namespace;
+				}
+			}
+			$this->page_block_namespaces = array_values( array_unique( $namespaces ) );
+		}
+		return $this->page_block_namespaces;
+	}
+
+	/**
+	 * Folders of the plugins that provide the blocks used in the maintenance
+	 * page: from the files of the block scripts and styles, or a plugin folder
+	 * with the same name as the block namespace (e.g. "generateblocks").
+	 */
+	private function get_page_block_plugins() {
+		$plugins_url = $this->normalize_url( plugins_url( '/' ) );
+		$registry    = WP_Block_Type_Registry::get_instance();
+		$slugs       = array();
+		foreach ( $this->get_page_block_names() as $name ) {
+			$namespace = strtok( $name, '/' );
+			if ( 'core' === $namespace ) {
+				continue;
+			}
+			if ( is_dir( WP_PLUGIN_DIR . '/' . $namespace ) ) {
+				$slugs[] = $namespace;
+			}
+			$type = $registry->get_registered( $name );
+			if ( ! $type ) {
+				continue;
+			}
+			$handles = array();
+			foreach ( array( 'editor_script_handles', 'script_handles', 'view_script_handles', 'editor_style_handles', 'style_handles', 'view_style_handles', 'editor_script', 'script', 'view_script', 'editor_style', 'style' ) as $property ) {
+				if ( isset( $type->$property ) ) {
+					$handles = array_merge( $handles, (array) $type->$property );
+				}
+			}
+			foreach ( array_filter( $handles, 'is_string' ) as $handle ) {
+				foreach ( array( wp_scripts(), wp_styles() ) as $dependencies ) {
+					if ( empty( $dependencies->registered[ $handle ] ) || ! is_string( $dependencies->registered[ $handle ]->src ) ) {
+						continue;
+					}
+					$src = $this->normalize_url( $dependencies->registered[ $handle ]->src );
+					if ( 0 === strpos( $src, $plugins_url ) ) {
+						$slugs[] = strtok( substr( $src, strlen( $plugins_url ) ), '/' );
+					}
+				}
+			}
+		}
+		return array_values( array_unique( array_filter( $slugs ) ) );
+	}
+
+	/**
+	 * Names of the blocks used in the maintenance page.
+	 */
+	private function get_page_block_names() {
+		if ( null === $this->page_block_names ) {
+			$this->page_block_names = function_exists( 'parse_blocks' )
+				? array_values( array_unique( $this->collect_block_names( parse_blocks( (string) get_post_field( 'post_content', $this->get_page_id() ) ) ) ) )
+				: array();
+		}
+		return $this->page_block_names;
+	}
+
+	/**
+	 * Block names in a list of parsed blocks, inner blocks and synced patterns
+	 * included.
+	 */
+	private function collect_block_names( $blocks, $depth = 0 ) {
+		$names = array();
+		if ( $depth > 10 ) {
+			return $names;
+		}
+		foreach ( $blocks as $block ) {
+			if ( empty( $block['blockName'] ) ) {
+				continue;
+			}
+			$names[] = $block['blockName'];
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$names = array_merge( $names, $this->collect_block_names( $block['innerBlocks'], $depth + 1 ) );
+			}
+			if ( 'core/block' === $block['blockName'] && ! empty( $block['attrs']['ref'] ) ) {
+				$names = array_merge( $names, $this->collect_block_names( parse_blocks( (string) get_post_field( 'post_content', (int) $block['attrs']['ref'] ) ), $depth + 1 ) );
+			}
+		}
+		return $names;
 	}
 
 	/**
@@ -373,6 +725,16 @@ class ACWMMBP_Maintenance_Mode {
 			'type'              => 'array',
 			'sanitize_callback' => array( $this, 'sanitize_allowed_pages' ),
 			'default'           => array(),
+		) );
+		register_setting( 'acwmmbp_group', self::OPTION_SCRIPTS, array(
+			'type'              => 'boolean',
+			'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+			'default'           => false,
+		) );
+		register_setting( 'acwmmbp_group', self::OPTION_REST, array(
+			'type'              => 'boolean',
+			'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+			'default'           => false,
 		) );
 	}
 
@@ -534,6 +896,28 @@ class ACWMMBP_Maintenance_Mode {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row"><?php esc_html_e( 'Tracking codes', 'acw-maintenance-mode-by-page' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_SCRIPTS ); ?>" value="1" <?php checked( (bool) get_option( self::OPTION_SCRIPTS ) ); ?> />
+								<?php esc_html_e( 'Do not load tracking codes on the maintenance page', 'acw-maintenance-mode-by-page' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Removes the scripts added to the site by plugins or by hand, such as Google Analytics, Tag Manager, Facebook Pixel or the cookie banner, so visits to the maintenance page are not tracked. The page keeps its look: the styles and the scripts of WordPress, of the theme and of the blocks used in the page are still loaded.', 'acw-maintenance-mode-by-page' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Recommended on a staging site or on a site not online yet. On a live site you can leave it unchecked, to keep counting visits. If something in the page stops working (e.g. a form added with a shortcode), leave it unchecked.', 'acw-maintenance-mode-by-page' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'REST API', 'acw-maintenance-mode-by-page' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_REST ); ?>" value="1" <?php checked( (bool) get_option( self::OPTION_REST ) ); ?> />
+								<?php esc_html_e( 'Hide pages, posts and other content from the REST API to visitors who are not signed in', 'acw-maintenance-mode-by-page' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'During maintenance, the content of the site can still be read at addresses such as /wp-json/wp/v2/pages. When checked, these addresses answer “temporarily unavailable” to visitors who are not signed in. Signed-in users and connections with an application password keep working, and so do the forms of other plugins.', 'acw-maintenance-mode-by-page' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Recommended on a staging site or when the content is not public yet. Leave it unchecked if apps or external services read the site content.', 'acw-maintenance-mode-by-page' ); ?></p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><?php esc_html_e( 'Content width', 'acw-maintenance-mode-by-page' ); ?></th>
 						<td>
 							<fieldset>
@@ -554,7 +938,10 @@ class ACWMMBP_Maintenance_Mode {
 					<?php esc_html_e( 'Saving purges the cache of SiteGround Speed Optimizer, WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache and WP Fastest Cache. With other caching plugins, a CDN or a server cache, purge it manually after turning maintenance on or off.', 'acw-maintenance-mode-by-page' ); ?>
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'This is a maintenance mode, not a security barrier: the REST API and direct media file URLs stay reachable.', 'acw-maintenance-mode-by-page' ); ?>
+					<?php esc_html_e( 'During maintenance the XML sitemaps answer “temporarily unavailable” as well, while robots.txt stays reachable: this way search engines see that the pause is temporary.', 'acw-maintenance-mode-by-page' ); ?>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'This is a maintenance mode, not a security barrier: direct media file URLs stay reachable, and so does the REST API unless you hide it above.', 'acw-maintenance-mode-by-page' ); ?>
 				</p>
 				<?php submit_button(); ?>
 			</form>

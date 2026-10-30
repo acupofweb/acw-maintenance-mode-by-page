@@ -4,7 +4,7 @@ Tags: maintenance, maintenance mode, coming soon, under construction, 503
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.2
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -21,7 +21,10 @@ When the mode is active:
 * Front-end login, registration and lost password pages (e.g. Paid Memberships Pro) are detected and stay reachable. You can add other pages that must stay reachable, such as an account page.
 * The maintenance page is served with an HTTP **503 Service Unavailable** status and a `Retry-After` header, which is the correct signal for search engines during a temporary maintenance.
 * The page is displayed with a minimal template (**content only**, without the theme header, footer and menu). Choose the content width: **default** (inherited from the theme via `theme.json` or `$content_width`, with a fallback) or **full width**.
-* The login page, AJAX and the REST API remain reachable, so you can always sign in and turn the mode off.
+* XML sitemaps (such as `sitemap.xml`, `sitemap_index.xml` or `wp-sitemap.xml`) also answer 503, so the list of your URLs is not published during maintenance. `robots.txt` is served normally, so search engines keep crawling and see that the pause is temporary.
+* Optional, for staging sites and sites not online yet: do not load tracking codes (Google Analytics, Tag Manager, Facebook Pixel, cookie banner...) on the maintenance page. Styles and the scripts of WordPress, of the theme and of the blocks used in the page stay.
+* Optional: hide pages, posts and other content from the REST API (`/wp-json/wp/v2/...`) to visitors who are not signed in. Signed-in users and application passwords keep working.
+* The login page and AJAX remain reachable, so you can always sign in and turn the mode off.
 * If the selected page is deleted, unpublished or password-protected, visitors get a generic 503 maintenance message (never a redirect loop) and administrators see a warning.
 * Saving the settings purges the cache of SiteGround Speed Optimizer, WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache and WP Fastest Cache.
 
@@ -50,11 +53,23 @@ A page cache is serving pages saved before maintenance was enabled. The most com
 
 = Does the maintenance page show the theme header and footer? =
 
-No, only the page content is shown through a minimal template. The theme styles (CSS/fonts) are still loaded.
+No, only the page content is shown through a minimal template. The theme styles (CSS/fonts) are still loaded, and so are the scripts that plugins add to every page, tracking codes included, unless you check "Tracking codes".
+
+= Which settings should I use on a staging site? =
+
+Check "Tracking codes", so visits to the maintenance page are not tracked, and "REST API", so the content cannot be read through `/wp-json/`. On a live site you can leave both unchecked: visits keep being counted and apps or services that read the site through the REST API keep working.
+
+= Can I use it on a live site that is already indexed by search engines? =
+
+Yes. Every page answers 503 with a `Retry-After` header, the signal search engines expect for a temporary maintenance, while `robots.txt` stays reachable. Keep the pause short, though: if the site stays closed for more than a couple of days, search engines may start dropping its pages from their results.
+
+= Something in the maintenance page stopped working after checking "Tracking codes" =
+
+The option keeps the scripts of WordPress, of the theme and of the blocks used in the page, and removes the others. A form added with a shortcode, for example, may lose its script. Uncheck the option, or keep a specific script with the `acwmmbp_keep_script` filter.
 
 = Is this a security feature for private content? =
 
-No. It is a maintenance mode: it blocks browser navigation of the theme-rendered pages. It does not protect content served through the REST API or direct media file URLs. To protect truly private content you need server-level protection.
+No. It is a maintenance mode: it blocks browser navigation of the theme-rendered pages. It does not protect direct media file URLs, and the REST API only when you check the "REST API" option. To protect truly private content you need server-level protection.
 
 = How do I turn it off if I get locked out? =
 
@@ -65,6 +80,12 @@ The login page (`wp-login.php`) always remains accessible and administrators alw
 1. The settings screen: enable the mode, choose the page, the roles with access, the pages always reachable and the content width.
 
 == Changelog ==
+
+= 1.2.0 =
+* New: "Tracking codes" option, to remove analytics, tracking pixels, cookie banners and other added scripts from the maintenance page. Styles and the scripts of WordPress, of the theme and of the blocks used in the page stay.
+* New: "REST API" option, to hide pages, posts and other content from the REST API to visitors who are not signed in. Signed-in users, application passwords and the routes of other plugins keep working.
+* New: XML sitemaps (WordPress, Yoast SEO and similar) answer 503 during maintenance, instead of listing the site URLs.
+* Fix: robots.txt is served normally instead of being redirected to the maintenance page.
 
 = 1.1.0 =
 * New: choose which user roles keep browsing the site during maintenance. Users with other roles see the maintenance page and cannot open the dashboard. Administrators always have access.
@@ -82,6 +103,9 @@ The login page (`wp-login.php`) always remains accessible and administrators alw
 * First release.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+New options to keep tracking codes off the maintenance page and to hide content from the REST API. XML sitemaps now answer 503 during maintenance; robots.txt is served normally.
 
 = 1.1.0 =
 Logged-in users without a content role (e.g. subscribers, customers) now see the maintenance page. Review "Who can browse the site" in Settings → Maintenance.

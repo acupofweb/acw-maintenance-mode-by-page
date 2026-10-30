@@ -25,8 +25,15 @@ own theme, then simply select it.
   footer and menu.
 - Content width option: **default** (inherited from the theme via `theme.json` or
   `$content_width`) or **full width**.
-- The login page, AJAX and the REST API stay reachable, and administrators always
-  keep the dashboard, so you can always sign in and turn maintenance off.
+- XML sitemaps answer 503 too, while `robots.txt` is served normally, so search
+  engines see that the pause is temporary.
+- Optional: keep tracking codes (Analytics, Tag Manager, pixels, cookie banner) off
+  the maintenance page, keeping the styles and the scripts of WordPress, of the theme
+  and of the blocks used in the page. Useful on staging sites.
+- Optional: hide pages, posts and other content from the REST API to visitors who are
+  not signed in (signed-in users and application passwords keep working).
+- The login page and AJAX stay reachable, and administrators always keep the
+  dashboard, so you can always sign in and turn maintenance off.
 
 ## Installation
 
@@ -38,8 +45,8 @@ own theme, then simply select it.
 ## Notes
 
 This is a maintenance mode, not a security barrier: it blocks browser navigation of
-the theme-rendered pages. It does not protect content served through the REST API or
-direct media file URLs. To protect truly private content, use server-level
+the theme-rendered pages. It does not protect direct media file URLs, and the REST
+API only when the "REST API" option is checked. To protect truly private content, use server-level
 protection.
 
 ## License

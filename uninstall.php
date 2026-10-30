@@ -7,7 +7,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-$acwmmbp_options = array( 'acwmmbp_enabled', 'acwmmbp_page_id', 'acwmmbp_width', 'acwmmbp_roles', 'acwmmbp_allowed_pages' );
+$acwmmbp_options = array( 'acwmmbp_enabled', 'acwmmbp_page_id', 'acwmmbp_width', 'acwmmbp_roles', 'acwmmbp_allowed_pages', 'acwmmbp_hide_scripts', 'acwmmbp_block_rest' );
 
 if ( is_multisite() ) {
 	foreach ( get_sites( array( 'fields' => 'ids', 'number' => 0 ) ) as $acwmmbp_site_id ) {
