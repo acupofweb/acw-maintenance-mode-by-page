@@ -4,7 +4,7 @@ Tags: maintenance, maintenance mode, coming soon, under construction, 503
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.2
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -81,6 +81,9 @@ The login page (`wp-login.php`) always remains accessible and administrators alw
 
 == Changelog ==
 
+= 1.2.1 =
+* New: Italian translation included. The settings page, the admin notices and the generic maintenance message (shown when no valid page is selected) appear in Italian on sites set to Italian, and in English on sites in other languages.
+
 = 1.2.0 =
 * New: "Tracking codes" option, to remove analytics, tracking pixels, cookie banners and other added scripts from the maintenance page. Styles and the scripts of WordPress, of the theme and of the blocks used in the page stay.
 * New: "REST API" option, to hide pages, posts and other content from the REST API to visitors who are not signed in. Signed-in users, application passwords and the routes of other plugins keep working.
@@ -103,6 +106,9 @@ The login page (`wp-login.php`) always remains accessible and administrators alw
 * First release.
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+The plugin now appears in Italian on sites set to Italian.
 
 = 1.2.0 =
 New options to keep tracking codes off the maintenance page and to hide content from the REST API. XML sitemaps now answer 503 during maintenance; robots.txt is served normally.

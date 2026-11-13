@@ -4,7 +4,7 @@
  * Description: Put your site in maintenance mode showing visitors a single page of your choice, picked from your existing pages. Choose which user roles keep browsing the whole site.
  * Author: A Cup of Web
  * Author URI: https://www.acupofweb.it/
- * Version: 1.2.0
+ * Version: 1.2.1
  * Requires at least: 5.0
  * Requires PHP: 7.2
  * License: GPLv2 or later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class ACWMMBP_Maintenance_Mode {
 
-	const VERSION        = '1.2.0';
+	const VERSION        = '1.2.1';
 	const OPTION_ENABLED = 'acwmmbp_enabled';
 	const OPTION_PAGE_ID = 'acwmmbp_page_id';
 	const OPTION_WIDTH   = 'acwmmbp_width';
@@ -37,7 +37,17 @@ class ACWMMBP_Maintenance_Mode {
 	private $page_block_namespaces = null;
 	private $page_script_paths     = null;
 
+	/**
+	 * Loads the bundled translations. Translations from translate.wordpress.org, when they exist,
+	 * are installed in wp-content/languages and take precedence over these.
+	 */
+	public function load_textdomain() {
+		load_plugin_textdomain( 'acw-maintenance-mode-by-page', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+	}
+
 	public function __construct() {
+		// Before maybe_block_sitemap(), which may print a translated message.
+		add_action( 'init', array( $this, 'load_textdomain' ), 0 );
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'maybe_block_admin' ) );
