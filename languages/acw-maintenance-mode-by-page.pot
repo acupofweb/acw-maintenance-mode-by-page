@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: ACW Maintenance Mode by Page 1.2.1\n"
+"Project-Id-Version: ACW Maintenance Mode by Page 1.3.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/acw-maintenance-mode-by-page\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-13T19:49:21+00:00\n"
+"POT-Creation-Date: 2026-11-21T11:20:10+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: acw-maintenance-mode-by-page\n"
@@ -34,148 +34,172 @@ msgstr ""
 msgid "https://www.acupofweb.it/"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:220
-#: acw-maintenance-mode-by-page.php:261
-#: acw-maintenance-mode-by-page.php:305
+#: acw-maintenance-mode-by-page.php:225
+#: acw-maintenance-mode-by-page.php:266
+#: acw-maintenance-mode-by-page.php:310
 msgid "The site is undergoing maintenance. Please come back soon."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:221
-#: acw-maintenance-mode-by-page.php:706
+#: acw-maintenance-mode-by-page.php:226
+#: acw-maintenance-mode-by-page.php:957
 msgid "Maintenance"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:705
-#: acw-maintenance-mode-by-page.php:823
+#: acw-maintenance-mode-by-page.php:956
+#: acw-maintenance-mode-by-page.php:1084
 msgid "Maintenance Mode"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:761
+#: acw-maintenance-mode-by-page.php:1022
 msgid "The selected page must be a published page without password and cannot be the posts page."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:796
+#: acw-maintenance-mode-by-page.php:1057
 msgid "Maintenance mode is active but the selected page is not available: visitors see a generic maintenance message."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:797
+#: acw-maintenance-mode-by-page.php:1058
 msgid "Choose a page"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:827
+#: acw-maintenance-mode-by-page.php:1088
 msgid "Maintenance mode is ACTIVE."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:828
+#: acw-maintenance-mode-by-page.php:1089
 msgid "Visitors and users without access only see the selected page."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:832
+#: acw-maintenance-mode-by-page.php:1093
 msgid "Maintenance mode is ACTIVE, but no valid page is selected."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:833
+#: acw-maintenance-mode-by-page.php:1094
 msgid "Visitors see a generic maintenance message. Choose a published page."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:841
+#: acw-maintenance-mode-by-page.php:1102
 msgid "Enable maintenance"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:845
+#: acw-maintenance-mode-by-page.php:1106
 msgid "Show visitors only the selected page"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:851
+#: acw-maintenance-mode-by-page.php:1112
 msgid "Page to display"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:855
+#: acw-maintenance-mode-by-page.php:1116
 msgid "— Select a page —"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:862
+#: acw-maintenance-mode-by-page.php:1123
 msgid "Choose one of the published pages listed under “Pages” (the posts page and password-protected pages cannot be used)."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:866
+#: acw-maintenance-mode-by-page.php:1127
 msgid "Who can browse the site"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:881
+#: acw-maintenance-mode-by-page.php:1142
 msgid "Checked roles keep browsing the site and using the dashboard. Everyone else, including logged-out visitors, only sees the maintenance page. Administrators always have access."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:886
+#: acw-maintenance-mode-by-page.php:1147
 msgid "Pages always reachable"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:894
+#: acw-maintenance-mode-by-page.php:1155
 msgid "Pages that stay reachable during maintenance, such as a front-end login, registration or account page. Hold Ctrl (Cmd on Mac) to select more than one."
 msgstr ""
 
 #. translators: %s: comma-separated list of page titles.
-#: acw-maintenance-mode-by-page.php:900
+#: acw-maintenance-mode-by-page.php:1161
 #, php-format
 msgid "Detected automatically and always reachable: %s"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:909
+#: acw-maintenance-mode-by-page.php:1170
+msgid "Popups and other plugin elements"
+msgstr ""
+
+#: acw-maintenance-mode-by-page.php:1174
+msgid "Do not show popups, chat buttons, bars and other elements that plugins add to every page"
+msgstr ""
+
+#: acw-maintenance-mode-by-page.php:1176
+msgid "Keeps out of the maintenance page popups and slide-ins (e.g. Hustle, Popup Maker, OptinMonster), chat and WhatsApp buttons, notice and cookie bars, share buttons, ads and opt-in forms added after the content. The plugins used to build the page keep working: those of its blocks, of its shortcodes and of the page builder (e.g. Elementor)."
+msgstr ""
+
+#: acw-maintenance-mode-by-page.php:1177
+msgid "Recommended. Uncheck it if you want an element on the maintenance page, such as a floating WhatsApp button. Tracking codes are handled by the next option."
+msgstr ""
+
+#: acw-maintenance-mode-by-page.php:1182
+msgid "Hide the Elementor popups and floating buttons too, also when the page is built with Elementor"
+msgstr ""
+
+#: acw-maintenance-mode-by-page.php:1185
+msgid "Covers the popups of Elementor Pro and the floating buttons and bars of Elementor (e.g. a WhatsApp button). Uncheck it to keep them on the maintenance page, for example a popup opened by a button in the page. It works only together with the option above: when that one is unchecked, every popup is shown."
+msgstr ""
+
+#: acw-maintenance-mode-by-page.php:1193
 msgid "Tracking codes"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:913
+#: acw-maintenance-mode-by-page.php:1197
 msgid "Do not load tracking codes on the maintenance page"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:915
-msgid "Removes the scripts added to the site by plugins or by hand, such as Google Analytics, Tag Manager, Facebook Pixel or the cookie banner, so visits to the maintenance page are not tracked. The page keeps its look: the styles and the scripts of WordPress, of the theme and of the blocks used in the page are still loaded."
+#: acw-maintenance-mode-by-page.php:1199
+msgid "Removes the scripts added to the site by plugins or by hand, such as Google Analytics, Tag Manager, Facebook Pixel or the cookie banner, so visits to the maintenance page are not tracked. The page keeps its look: the styles and the scripts of WordPress, of the theme and of the blocks, shortcodes and page builder used in the page are still loaded."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:916
-msgid "Recommended on a staging site or on a site not online yet. On a live site you can leave it unchecked, to keep counting visits. If something in the page stops working (e.g. a form added with a shortcode), leave it unchecked."
+#: acw-maintenance-mode-by-page.php:1200
+msgid "Recommended on a staging site or on a site not online yet. On a live site you can leave it unchecked, to keep counting visits. If something in the page stops working (e.g. a captcha added to a form by another plugin), leave it unchecked."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:920
+#: acw-maintenance-mode-by-page.php:1204
 msgid "REST API"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:924
+#: acw-maintenance-mode-by-page.php:1208
 msgid "Hide pages, posts and other content from the REST API to visitors who are not signed in"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:926
+#: acw-maintenance-mode-by-page.php:1210
 msgid "During maintenance, the content of the site can still be read at addresses such as /wp-json/wp/v2/pages. When checked, these addresses answer “temporarily unavailable” to visitors who are not signed in. Signed-in users and connections with an application password keep working, and so do the forms of other plugins."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:927
+#: acw-maintenance-mode-by-page.php:1211
 msgid "Recommended on a staging site or when the content is not public yet. Leave it unchecked if apps or external services read the site content."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:931
+#: acw-maintenance-mode-by-page.php:1215
 msgid "Content width"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:936
+#: acw-maintenance-mode-by-page.php:1220
 msgid "Default width (inherited from the theme)"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:941
+#: acw-maintenance-mode-by-page.php:1225
 msgid "Full width"
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:948
+#: acw-maintenance-mode-by-page.php:1232
 msgid "Saving purges the cache of SiteGround Speed Optimizer, WP Rocket, LiteSpeed Cache, W3 Total Cache, WP Super Cache and WP Fastest Cache. With other caching plugins, a CDN or a server cache, purge it manually after turning maintenance on or off."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:951
+#: acw-maintenance-mode-by-page.php:1235
 msgid "During maintenance the XML sitemaps answer “temporarily unavailable” as well, while robots.txt stays reachable: this way search engines see that the pause is temporary."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:954
+#: acw-maintenance-mode-by-page.php:1238
 msgid "This is a maintenance mode, not a security barrier: direct media file URLs stay reachable, and so does the REST API unless you hide it above."
 msgstr ""
 
-#: acw-maintenance-mode-by-page.php:971
+#: acw-maintenance-mode-by-page.php:1255
 msgid "⚠ Maintenance active"
 msgstr ""

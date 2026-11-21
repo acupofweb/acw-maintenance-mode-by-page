@@ -4,7 +4,7 @@
  * Description: Put your site in maintenance mode showing visitors a single page of your choice, picked from your existing pages. Choose which user roles keep browsing the whole site.
  * Author: A Cup of Web
  * Author URI: https://www.acupofweb.it/
- * Version: 1.2.1
+ * Version: 1.3.0
  * Requires at least: 5.0
  * Requires PHP: 7.2
  * License: GPLv2 or later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class ACWMMBP_Maintenance_Mode {
 
-	const VERSION        = '1.2.1';
+	const VERSION        = '1.3.0';
 	const OPTION_ENABLED = 'acwmmbp_enabled';
 	const OPTION_PAGE_ID = 'acwmmbp_page_id';
 	const OPTION_WIDTH   = 'acwmmbp_width';
@@ -27,15 +27,19 @@ class ACWMMBP_Maintenance_Mode {
 	const OPTION_ALLOWED = 'acwmmbp_allowed_pages';
 	const OPTION_SCRIPTS = 'acwmmbp_hide_scripts';
 	const OPTION_REST    = 'acwmmbp_block_rest';
+	const OPTION_ADDONS  = 'acwmmbp_hide_addons';
+	const OPTION_BUILDER = 'acwmmbp_hide_builder_popups';
 	const SETTINGS_SLUG  = 'acw-maintenance-mode-by-page';
 
 	/**
-	 * Cached data about the maintenance page, used when tracking codes are not
-	 * loaded.
+	 * Cached data about the maintenance page, used when tracking codes or the
+	 * elements added by plugins are not loaded.
 	 */
 	private $page_block_names      = null;
 	private $page_block_namespaces = null;
 	private $page_script_paths     = null;
+	private $page_plugins          = null;
+	private $plugin_folders        = null;
 
 	/**
 	 * Loads the bundled translations. Translations from translate.wordpress.org, when they exist,
@@ -55,6 +59,7 @@ class ACWMMBP_Maintenance_Mode {
 		add_action( 'init', array( $this, 'maybe_block_sitemap' ), 0 );
 		add_action( 'template_redirect', array( $this, 'maybe_redirect' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_hide_scripts' ), 20 );
+		add_action( 'template_redirect', array( $this, 'maybe_hide_addons' ), 20 );
 		add_filter( 'rest_pre_dispatch', array( $this, 'maybe_block_rest' ), 10, 3 );
 		add_filter( 'template_include', array( $this, 'maybe_use_blank_template' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ) );
@@ -62,7 +67,7 @@ class ACWMMBP_Maintenance_Mode {
 
 		// Purge page caches whenever the settings are saved. pre_update_option_*
 		// runs even when a value does not change, unlike update_option_*.
-		foreach ( array( self::OPTION_ENABLED, self::OPTION_PAGE_ID, self::OPTION_WIDTH, self::OPTION_ROLES, self::OPTION_ALLOWED, self::OPTION_SCRIPTS, self::OPTION_REST ) as $option ) {
+		foreach ( array( self::OPTION_ENABLED, self::OPTION_PAGE_ID, self::OPTION_WIDTH, self::OPTION_ROLES, self::OPTION_ALLOWED, self::OPTION_SCRIPTS, self::OPTION_REST, self::OPTION_ADDONS, self::OPTION_BUILDER ) as $option ) {
 			add_filter( 'pre_update_option_' . $option, array( $this, 'schedule_cache_purge' ) );
 		}
 	}
@@ -329,6 +334,246 @@ class ACWMMBP_Maintenance_Mode {
 		}
 	}
 
+	/**
+	 * Unless the option is off, keep out of the maintenance page what plugins
+	 * add to every page: popups, slide-ins, chat and WhatsApp buttons, notice
+	 * bars, cookie banners (printed in wp_body_open() and wp_footer()) and
+	 * share buttons, ads, opt-in forms or related posts (added to the content).
+	 * Plugins that provide the blocks, the shortcodes or the page builder used
+	 * in the page are kept.
+	 */
+	public function maybe_hide_addons() {
+		if ( ! get_option( self::OPTION_ADDONS, 1 ) || ! $this->is_maintenance_request() ) {
+			return;
+		}
+		// Run first on each hook, when every plugin has added its callbacks.
+		foreach ( array( 'wp_body_open', 'wp_footer', 'the_content' ) as $hook ) {
+			add_filter( $hook, array( $this, 'remove_addon_callbacks' ), PHP_INT_MIN );
+		}
+		// Elementor Pro: no popup or floating buttons template for the page, so
+		// neither they nor their styles and scripts are loaded.
+		if ( get_option( self::OPTION_BUILDER, 1 ) ) {
+			add_filter( 'elementor/theme/get_location_templates/template_id', array( $this, 'remove_elementor_popups' ), 10, 2 );
+		}
+	}
+
+	/**
+	 * Drop the templates of the Elementor Pro "popup" and "floating_buttons"
+	 * locations.
+	 */
+	public function remove_elementor_popups( $template_id, $location = '' ) {
+		return in_array( $location, array( 'popup', 'floating_buttons' ), true ) ? 0 : $template_id;
+	}
+
+	/**
+	 * Remove from the running hook the callbacks of the plugins not needed by
+	 * the maintenance page. Returns the first argument, for the_content.
+	 */
+	public function remove_addon_callbacks( $value = null ) {
+		global $wp_filter;
+		$hook = current_filter();
+		if ( empty( $wp_filter[ $hook ] ) ) {
+			return $value;
+		}
+		foreach ( $wp_filter[ $hook ]->callbacks as $priority => $callbacks ) {
+			foreach ( $callbacks as $callback ) {
+				$plugin = $this->get_callback_plugin( $callback['function'] );
+				if ( '' === $plugin ) {
+					continue;
+				}
+				// The popups and floating buttons of a page builder (Elementor)
+				// go away even when the page is built with it, unless their own
+				// option is off.
+				$is_popup = $this->is_popup_callback( $callback['function'] );
+				if ( $is_popup ? ! get_option( self::OPTION_BUILDER, 1 ) : in_array( $plugin, $this->get_page_plugins(), true ) ) {
+					continue;
+				}
+
+				/**
+				 * Filters whether what a plugin adds to the maintenance page is
+				 * kept, when the elements added by plugins are not shown.
+				 *
+				 * @param bool   $keep   Whether the plugin output is kept.
+				 * @param string $plugin Plugin folder, e.g. "popup-maker".
+				 * @param string $hook   "wp_body_open", "wp_footer" or "the_content".
+				 */
+				if ( ! apply_filters( 'acwmmbp_keep_plugin_output', false, $plugin, $hook ) ) {
+					remove_filter( $hook, $callback['function'], $priority );
+				}
+			}
+		}
+		return $value;
+	}
+
+	/**
+	 * True when a hook callback belongs to the popup module of a plugin that
+	 * also builds pages: the Popup and Floating Buttons modules of Elementor
+	 * and Elementor Pro.
+	 */
+	private function is_popup_callback( $callback ) {
+		if ( is_string( $callback ) && false !== strpos( $callback, '::' ) ) {
+			$callback = explode( '::', $callback, 2 );
+		}
+		$class = '';
+		if ( is_array( $callback ) && isset( $callback[0] ) ) {
+			$class = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0];
+		} elseif ( $callback instanceof Closure ) {
+			try {
+				$scope = ( new ReflectionFunction( $callback ) )->getClosureScopeClass();
+				$class = $scope ? $scope->getName() : '';
+			} catch ( ReflectionException $e ) {
+				$class = '';
+			}
+		} elseif ( is_object( $callback ) ) {
+			$class = get_class( $callback );
+		}
+		if ( '' === $class ) {
+			return false;
+		}
+
+		/**
+		 * Filters the class name prefixes of the popup modules removed from the
+		 * maintenance page even when their plugin is needed by the page.
+		 *
+		 * @param string[] $prefixes Class name prefixes, with namespace.
+		 */
+		$prefixes = (array) apply_filters( 'acwmmbp_popup_classes', array( 'ElementorPro\\Modules\\Popup\\', 'ElementorPro\\Modules\\FloatingButtons\\', 'Elementor\\Modules\\FloatingButtons\\' ) );
+		foreach ( $prefixes as $prefix ) {
+			// PHP class names are case-insensitive.
+			if ( is_string( $prefix ) && '' !== $prefix && 0 === stripos( ltrim( $class, '\\' ), ltrim( $prefix, '\\' ) ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Folder of the active plugin that defines a hook callback, or an empty
+	 * string for WordPress, the theme, must-use plugins and this plugin.
+	 */
+	private function get_callback_plugin( $callback ) {
+		try {
+			if ( is_string( $callback ) && false !== strpos( $callback, '::' ) ) {
+				$callback = explode( '::', $callback, 2 );
+			}
+			if ( is_array( $callback ) && 2 === count( $callback ) ) {
+				$reflection = new ReflectionMethod( $callback[0], $callback[1] );
+			} elseif ( is_string( $callback ) || $callback instanceof Closure ) {
+				$reflection = new ReflectionFunction( $callback );
+			} elseif ( is_object( $callback ) && method_exists( $callback, '__invoke' ) ) {
+				$reflection = new ReflectionMethod( $callback, '__invoke' );
+			} else {
+				return '';
+			}
+		} catch ( ReflectionException $e ) {
+			return '';
+		}
+		$file = $reflection->getFileName();
+		if ( ! $file ) {
+			return '';
+		}
+		$file = wp_normalize_path( $file );
+		foreach ( $this->get_plugin_folders() as $plugin => $path ) {
+			if ( 0 === strpos( $file, $path ) ) {
+				return $plugin;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Real paths of the active plugins (symbolic links resolved, as in the file
+	 * names given by Reflection), keyed by plugin folder. This plugin is left
+	 * out.
+	 */
+	private function get_plugin_folders() {
+		if ( null === $this->plugin_folders ) {
+			$plugins = (array) get_option( 'active_plugins', array() );
+			if ( is_multisite() ) {
+				$plugins = array_merge( $plugins, array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) );
+			}
+			$this->plugin_folders = array();
+			foreach ( $plugins as $basename ) {
+				$folder = dirname( $basename );
+				if ( plugin_basename( __FILE__ ) === $basename ) {
+					continue;
+				}
+				// A plugin made of a single file, e.g. hello.php.
+				$path = realpath( WP_PLUGIN_DIR . '/' . ( '.' === $folder ? $basename : $folder ) );
+				if ( $path ) {
+					$key                          = '.' === $folder ? basename( $basename, '.php' ) : $folder;
+					$this->plugin_folders[ $key ] = wp_normalize_path( $path ) . ( '.' === $folder ? '' : '/' );
+				}
+			}
+		}
+		return $this->plugin_folders;
+	}
+
+	/**
+	 * Folders of the plugins needed by the maintenance page: those of its
+	 * blocks, of its shortcodes and of the page builder it was made with.
+	 */
+	private function get_page_plugins() {
+		if ( null === $this->page_plugins ) {
+			$plugins = $this->get_page_block_plugins();
+
+			global $shortcode_tags;
+			$content = (string) get_post_field( 'post_content', $this->get_page_id() );
+			foreach ( $this->collect_shortcode_tags( $content ) as $tag ) {
+				if ( isset( $shortcode_tags[ $tag ] ) ) {
+					$plugins[] = $this->get_callback_plugin( $shortcode_tags[ $tag ] );
+				}
+			}
+
+			$page_id  = $this->get_page_id();
+			$builders = array(
+				'elementor'                   => 'builder' === get_post_meta( $page_id, '_elementor_edit_mode', true ),
+				'elementor-pro'               => 'builder' === get_post_meta( $page_id, '_elementor_edit_mode', true ),
+				'pro-elements'                => 'builder' === get_post_meta( $page_id, '_elementor_edit_mode', true ),
+				'bb-plugin'                   => (bool) get_post_meta( $page_id, '_fl_builder_enabled', true ),
+				'beaver-builder-lite-version' => (bool) get_post_meta( $page_id, '_fl_builder_enabled', true ),
+				'divi-builder'                => 'on' === get_post_meta( $page_id, '_et_pb_use_builder', true ),
+				'siteorigin-panels'           => (bool) get_post_meta( $page_id, 'panels_data', true ),
+			);
+			foreach ( $builders as $plugin => $used ) {
+				if ( $used ) {
+					$plugins[] = $plugin;
+				}
+			}
+			// Elementor popups and floating buttons need Elementor in the page.
+			if ( ! get_option( self::OPTION_BUILDER, 1 ) ) {
+				array_push( $plugins, 'elementor', 'elementor-pro', 'pro-elements' );
+			}
+
+			/**
+			 * Filters the folders of the plugins needed by the maintenance page.
+			 * Their scripts and what they add to the page are always kept.
+			 *
+			 * @param string[] $plugins Plugin folders, e.g. "contact-form-7".
+			 */
+			$plugins            = apply_filters( 'acwmmbp_page_plugins', $plugins );
+			$this->page_plugins = array_values( array_unique( array_filter( (array) $plugins, 'is_string' ) ) );
+		}
+		return $this->page_plugins;
+	}
+
+	/**
+	 * Shortcode tags used in a text, nested ones included.
+	 */
+	private function collect_shortcode_tags( $content, $depth = 0 ) {
+		$tags = array();
+		if ( $depth > 5 || false === strpos( $content, '[' ) || ! preg_match_all( '/' . get_shortcode_regex() . '/', $content, $matches, PREG_SET_ORDER ) ) {
+			return $tags;
+		}
+		foreach ( $matches as $match ) {
+			$tags[] = $match[2];
+			if ( '' !== $match[5] ) {
+				$tags = array_merge( $tags, $this->collect_shortcode_tags( $match[5], $depth + 1 ) );
+			}
+		}
+		return $tags;
+	}
+
 	public function start_scripts_buffer() {
 		ob_start();
 	}
@@ -445,7 +690,7 @@ class ACWMMBP_Maintenance_Mode {
 		if ( null === $this->page_script_paths ) {
 			$uploads = wp_get_upload_dir();
 			$paths   = array( includes_url(), get_template_directory_uri() . '/', get_stylesheet_directory_uri() . '/', trailingslashit( $uploads['baseurl'] ) );
-			foreach ( $this->get_page_block_plugins() as $slug ) {
+			foreach ( $this->get_page_plugins() as $slug ) {
 				$paths[] = plugins_url( $slug . '/' );
 			}
 			$this->page_script_paths = array_map( array( $this, 'normalize_url' ), $paths );
@@ -606,6 +851,12 @@ class ACWMMBP_Maintenance_Mode {
 		$width   = $this->get_container_width();
 		$padding = 'none' === $width ? '0' : '8vh 24px';
 		$css     = '.acw-mm-wrap{max-width:' . $width . ';margin:0 auto;padding:' . $padding . ';}';
+		if ( get_option( self::OPTION_ADDONS, 1 ) && get_option( self::OPTION_BUILDER, 1 ) ) {
+			// Elementor popups and floating buttons, also when a script opens
+			// them: their documents and the dialog Elementor creates around a
+			// popup.
+			$css .= '[data-elementor-type="popup"],.elementor-location-popup,.elementor-popup-modal,[data-elementor-type="floating-buttons"],[data-elementor-type="floating-bars"]{display:none!important;}';
+		}
 		wp_add_inline_style( 'acwmmbp', $css );
 	}
 
@@ -740,6 +991,16 @@ class ACWMMBP_Maintenance_Mode {
 			'type'              => 'boolean',
 			'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
 			'default'           => false,
+		) );
+		register_setting( 'acwmmbp_group', self::OPTION_ADDONS, array(
+			'type'              => 'boolean',
+			'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+			'default'           => 1,
+		) );
+		register_setting( 'acwmmbp_group', self::OPTION_BUILDER, array(
+			'type'              => 'boolean',
+			'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+			'default'           => 1,
 		) );
 		register_setting( 'acwmmbp_group', self::OPTION_REST, array(
 			'type'              => 'boolean',
@@ -906,14 +1167,37 @@ class ACWMMBP_Maintenance_Mode {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row"><?php esc_html_e( 'Popups and other plugin elements', 'acw-maintenance-mode-by-page' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_ADDONS ); ?>" value="1" <?php checked( (bool) get_option( self::OPTION_ADDONS, 1 ) ); ?> />
+								<?php esc_html_e( 'Do not show popups, chat buttons, bars and other elements that plugins add to every page', 'acw-maintenance-mode-by-page' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Keeps out of the maintenance page popups and slide-ins (e.g. Hustle, Popup Maker, OptinMonster), chat and WhatsApp buttons, notice and cookie bars, share buttons, ads and opt-in forms added after the content. The plugins used to build the page keep working: those of its blocks, of its shortcodes and of the page builder (e.g. Elementor).', 'acw-maintenance-mode-by-page' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Recommended. Uncheck it if you want an element on the maintenance page, such as a floating WhatsApp button. Tracking codes are handled by the next option.', 'acw-maintenance-mode-by-page' ); ?></p>
+							<?php if ( defined( 'ELEMENTOR_VERSION' ) || isset( $this->get_plugin_folders()['elementor'] ) ) : ?>
+								<p>
+									<label>
+										<input type="checkbox" name="<?php echo esc_attr( self::OPTION_BUILDER ); ?>" value="1" <?php checked( (bool) get_option( self::OPTION_BUILDER, 1 ) ); ?> />
+										<?php esc_html_e( 'Hide the Elementor popups and floating buttons too, also when the page is built with Elementor', 'acw-maintenance-mode-by-page' ); ?>
+									</label>
+								</p>
+								<p class="description"><?php esc_html_e( 'Covers the popups of Elementor Pro and the floating buttons and bars of Elementor (e.g. a WhatsApp button). Uncheck it to keep them on the maintenance page, for example a popup opened by a button in the page. It works only together with the option above: when that one is unchecked, every popup is shown.', 'acw-maintenance-mode-by-page' ); ?></p>
+							<?php else : ?>
+								<?php // Keep the saved value while Elementor is not active. ?>
+								<input type="hidden" name="<?php echo esc_attr( self::OPTION_BUILDER ); ?>" value="<?php echo esc_attr( get_option( self::OPTION_BUILDER, 1 ) ? '1' : '0' ); ?>" />
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><?php esc_html_e( 'Tracking codes', 'acw-maintenance-mode-by-page' ); ?></th>
 						<td>
 							<label>
 								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_SCRIPTS ); ?>" value="1" <?php checked( (bool) get_option( self::OPTION_SCRIPTS ) ); ?> />
 								<?php esc_html_e( 'Do not load tracking codes on the maintenance page', 'acw-maintenance-mode-by-page' ); ?>
 							</label>
-							<p class="description"><?php esc_html_e( 'Removes the scripts added to the site by plugins or by hand, such as Google Analytics, Tag Manager, Facebook Pixel or the cookie banner, so visits to the maintenance page are not tracked. The page keeps its look: the styles and the scripts of WordPress, of the theme and of the blocks used in the page are still loaded.', 'acw-maintenance-mode-by-page' ); ?></p>
-							<p class="description"><?php esc_html_e( 'Recommended on a staging site or on a site not online yet. On a live site you can leave it unchecked, to keep counting visits. If something in the page stops working (e.g. a form added with a shortcode), leave it unchecked.', 'acw-maintenance-mode-by-page' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Removes the scripts added to the site by plugins or by hand, such as Google Analytics, Tag Manager, Facebook Pixel or the cookie banner, so visits to the maintenance page are not tracked. The page keeps its look: the styles and the scripts of WordPress, of the theme and of the blocks, shortcodes and page builder used in the page are still loaded.', 'acw-maintenance-mode-by-page' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Recommended on a staging site or on a site not online yet. On a live site you can leave it unchecked, to keep counting visits. If something in the page stops working (e.g. a captcha added to a form by another plugin), leave it unchecked.', 'acw-maintenance-mode-by-page' ); ?></p>
 						</td>
 					</tr>
 					<tr>

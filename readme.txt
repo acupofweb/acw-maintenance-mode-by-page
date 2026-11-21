@@ -4,7 +4,7 @@ Tags: maintenance, maintenance mode, coming soon, under construction, 503
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.2
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -21,8 +21,9 @@ When the mode is active:
 * Front-end login, registration and lost password pages (e.g. Paid Memberships Pro) are detected and stay reachable. You can add other pages that must stay reachable, such as an account page.
 * The maintenance page is served with an HTTP **503 Service Unavailable** status and a `Retry-After` header, which is the correct signal for search engines during a temporary maintenance.
 * The page is displayed with a minimal template (**content only**, without the theme header, footer and menu). Choose the content width: **default** (inherited from the theme via `theme.json` or `$content_width`, with a fallback) or **full width**.
+* Popups, slide-ins, chat and WhatsApp buttons, notice bars, share buttons, ads and the other elements that plugins add to every page (e.g. Hustle, Popup Maker, OptinMonster, Join.chat, AddToAny) are kept out of the maintenance page. The plugins used to build the page keep working: those of its blocks, of its shortcodes and of the page builder (Elementor, Beaver Builder, Divi Builder, SiteOrigin Page Builder). Elementor popups and floating buttons or bars (Elementor Pro, Pro Elements and the Floating Buttons of the free Elementor) are hidden even when the page is built with Elementor, unless you uncheck the dedicated option.
 * XML sitemaps (such as `sitemap.xml`, `sitemap_index.xml` or `wp-sitemap.xml`) also answer 503, so the list of your URLs is not published during maintenance. `robots.txt` is served normally, so search engines keep crawling and see that the pause is temporary.
-* Optional, for staging sites and sites not online yet: do not load tracking codes (Google Analytics, Tag Manager, Facebook Pixel, cookie banner...) on the maintenance page. Styles and the scripts of WordPress, of the theme and of the blocks used in the page stay.
+* Optional, for staging sites and sites not online yet: do not load tracking codes (Google Analytics, Tag Manager, Facebook Pixel, cookie banner...) on the maintenance page. Styles and the scripts of WordPress, of the theme and of the blocks, shortcodes and page builder used in the page stay.
 * Optional: hide pages, posts and other content from the REST API (`/wp-json/wp/v2/...`) to visitors who are not signed in. Signed-in users and application passwords keep working.
 * The login page and AJAX remain reachable, so you can always sign in and turn the mode off.
 * If the selected page is deleted, unpublished or password-protected, visitors get a generic 503 maintenance message (never a redirect loop) and administrators see a warning.
@@ -53,7 +54,15 @@ A page cache is serving pages saved before maintenance was enabled. The most com
 
 = Does the maintenance page show the theme header and footer? =
 
-No, only the page content is shown through a minimal template. The theme styles (CSS/fonts) are still loaded, and so are the scripts that plugins add to every page, tracking codes included, unless you check "Tracking codes".
+No, only the page content is shown through a minimal template. The theme styles (CSS/fonts) are still loaded. Popups, chat buttons, bars and the other elements that plugins add to every page are not shown, unless you uncheck "Popups and other plugin elements". Tracking codes are still loaded, unless you check "Tracking codes".
+
+= A popup or a chat button still appears on the maintenance page =
+
+"Popups and other plugin elements" removes what plugins print on the page and add to its content. A few services, such as some chat or popup services loaded from an external site, are added only through a script: check "Tracking codes" as well. If the element comes from the plugin that also provides a block or a shortcode used in the maintenance page, that plugin is kept on purpose; you can drop it with the `acwmmbp_page_plugins` filter. The popup modules of other page builders can be added with the `acwmmbp_popup_classes` filter.
+
+= An element I want disappeared from the maintenance page =
+
+Uncheck "Popups and other plugin elements", or keep a single plugin with the `acwmmbp_keep_plugin_output` filter.
 
 = Which settings should I use on a staging site? =
 
@@ -65,7 +74,7 @@ Yes. Every page answers 503 with a `Retry-After` header, the signal search engin
 
 = Something in the maintenance page stopped working after checking "Tracking codes" =
 
-The option keeps the scripts of WordPress, of the theme and of the blocks used in the page, and removes the others. A form added with a shortcode, for example, may lose its script. Uncheck the option, or keep a specific script with the `acwmmbp_keep_script` filter.
+The option keeps the scripts of WordPress, of the theme and of the blocks, shortcodes and page builder used in the page, and removes the others. A feature that comes from another plugin, such as a captcha added to a form, may lose its script. Uncheck the option, or keep a specific script with the `acwmmbp_keep_script` filter.
 
 = Is this a security feature for private content? =
 
@@ -77,9 +86,13 @@ The login page (`wp-login.php`) always remains accessible and administrators alw
 
 == Screenshots ==
 
-1. The settings screen: enable the mode, choose the page, the roles with access, the pages always reachable and the content width.
+1. The settings screen: enable the mode, choose the page, the roles with access, the pages always reachable, the popups and scripts to keep out of the page and the content width.
 
 == Changelog ==
+
+= 1.3.0 =
+* New: "Popups and other plugin elements" option, on by default. Popups, slide-ins, chat and WhatsApp buttons, notice bars, share buttons, ads and the other elements that plugins add to every page (e.g. Hustle, Popup Maker, OptinMonster, Join.chat, AddToAny) no longer appear on the maintenance page. The plugins of the blocks, shortcodes and page builder used in the page keep working, while Elementor popups and floating buttons are hidden even on a page built with Elementor (a dedicated checkbox, shown when Elementor is active, keeps them).
+* Tweak: with "Tracking codes" checked, the scripts of the shortcodes and of the page builder used in the page are kept too, not only those of its blocks.
 
 = 1.2.1 =
 * New: Italian translation included. The settings page, the admin notices and the generic maintenance message (shown when no valid page is selected) appear in Italian on sites set to Italian, and in English on sites in other languages.
@@ -106,6 +119,9 @@ The login page (`wp-login.php`) always remains accessible and administrators alw
 * First release.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Popups, chat buttons, bars and the other elements added by plugins no longer appear on the maintenance page. Uncheck "Popups and other plugin elements" in Settings → Maintenance to show them again.
 
 = 1.2.1 =
 The plugin now appears in Italian on sites set to Italian.
